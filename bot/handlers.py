@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from .models import Player, GameState
+from .models import Player  # убираем GameState пока
 from .keyboards import get_main_keyboard, get_bar_keyboard
 from .states import ARRIVAL, BAR_CHOICE
 
@@ -56,12 +56,13 @@ async def explore_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
     exploration_text = """
 🏙️ *Исследование Хармонта*
 
-Город живет странной жизнью. Здесь смешались обычные люди и те, кто видел Зону. 
+Город живет странной жизнени. Здесь смешались обычные люди и те, кто видел Зону. 
 В их взглядах читается тоска и жадность одновременно.
 
-*Куда направишься?*
+Пока доступно только главное меню. Функциональность в разработке.
 """
     await update.message.reply_text(exploration_text, parse_mode='Markdown')
+    await update.message.reply_text("Выбери действие:", reply_markup=get_main_keyboard())
     return ARRIVAL
 
 async def go_to_bar(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -77,32 +78,64 @@ async def go_to_bar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Ты заходишь в полутемное помещение. Воздух густой от табачного дыма и запаха дешевого алкоголя. 
 За столиками сидятся люди с усталыми, но цепкими взглядами.
+
+Пока доступно только главное меню. Функциональность в разработке.
 """
         await update.message.reply_text(bar_text, parse_mode='Markdown')
-        await update.message.reply_text("Бармен смотрит на тебя оценивающе...", reply_markup=get_bar_keyboard())
+        await update.message.reply_text("Выбери действие:", reply_markup=get_main_keyboard())
         
-        return BAR_CHOICE
+        return ARRIVAL
         
     except Exception as e:
         await update.message.reply_text("Произошла ошибка.")
         print("Error in go_to_bar:", e)
         return ARRIVAL
 
-# Заглушки для остальных функций (пока)
+# Упрощенные заглушки
 async def order_beer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🍺 Ты заказываешь пиво... Функция в разработке.")
-    return BAR_CHOICE
+    await update.message.reply_text("🍺 Функция в разработке. Возвращаемся в главное меню.", reply_markup=get_main_keyboard())
+    return ARRIVAL
 
 async def ask_about_zone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👂 Ты расспрашиваешь о Зоне... Функция в разработке.")
-    return BAR_CHOICE
+    await update.message.reply_text("👂 Функция в разработке. Возвращаемся в главное меню.", reply_markup=get_main_keyboard())
+    return ARRIVAL
 
 async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📊 Статус персонажа... Функция в разработке.")
+    chat_id = update.effective_chat.id
+    try:
+        player = Player.objects.get(chat_id=chat_id)
+        status_text = f"""
+📊 *ТВОЙ СТАТУС*
+
+👤 Имя: {player.name}
+❤️ Здоровье: {player.health}/100
+🍀 Удача: {player.luck}/100
+💰 Деньги: {player.money} руб.
+⭐ Репутация: {player.reputation}
+
+📍 Локация: {player.get_location_display()}
+🎒 Инвентарь: {len(player.inventory)} предметов
+"""
+        await update.message.reply_text(status_text, parse_mode='Markdown')
+    except Exception as e:
+        await update.message.reply_text("❌ Ошибка загрузки статуса")
+    
+    await update.message.reply_text("Выбери действие:", reply_markup=get_main_keyboard())
     return ARRIVAL
 
 async def show_inventory(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎒 Инвентарь... Функция в разработке.")
+    chat_id = update.effective_chat.id
+    try:
+        player = Player.objects.get(chat_id=chat_id)
+        if player.inventory:
+            inventory_text = "🎒 *Твой инвентарь:*\n" + "\n".join(f"• {item}" for item in player.inventory)
+        else:
+            inventory_text = "🎒 *Твой рюкзак пуст.* Пора его наполнить!"
+        await update.message.reply_text(inventory_text, parse_mode='Markdown')
+    except Exception as e:
+        await update.message.reply_text("❌ Ошибка загрузки инвентаря")
+    
+    await update.message.reply_text("Выбери действие:", reply_markup=get_main_keyboard())
     return ARRIVAL
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
