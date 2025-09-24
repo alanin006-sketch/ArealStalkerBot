@@ -26,8 +26,6 @@ def setup_bot():
         # Добавляем обработчик команды /start
         application.add_handler(CommandHandler("start", start))
         
-        # Инициализируем приложение
-        application.initialize()
         print("✅ Bot setup completed")
     
     return application
@@ -48,18 +46,24 @@ def webhook(request):
             # Создаем объект Update
             update = Update.de_json(data, app.bot)
             
-            # Обрабатываем обновление
+            # Обрабатываем обновление через run_until_complete
             async def process_update():
-                await app.process_update(update)
+                async with app:
+                    await app.process_update(update)
             
             # Запускаем асинхронную обработку
-            asyncio.run(process_update())
+            if app.running:
+                asyncio.create_task(process_update())
+            else:
+                asyncio.run(process_update())
             
             print("✅ Update processed successfully")
             return JsonResponse({'status': 'ok'})
             
         except Exception as e:
             print("❌ Error in webhook:", str(e))
+            import traceback
+            print("Full traceback:", traceback.format_exc())
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
