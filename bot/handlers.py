@@ -1,8 +1,7 @@
-from telegram import Update
-from telegram.ext import ContextTypes
-from telegram import ReplyKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import CallbackContext
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def start(update: Update, context: CallbackContext):
     try:
         chat_id = update.effective_chat.id
         user_name = update.effective_user.first_name or "Сталкер"
@@ -22,30 +21,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Мне нужно понять, с чего начать. Город Хармонт выглядит как врата в другой мир...
         """
         
-        # Простая клавиатура для начала
+        # Простая клавиатура
         keyboard = ReplyKeyboardMarkup([
             ['👣 Исследовать город', '🍻 Найти бар'],
             ['📊 Мой статус', '🎒 Инвентарь']
         ], resize_keyboard=True)
         
-        await update.message.reply_text(welcome_text, parse_mode='Markdown')
-        await update.message.reply_text("Выбери действие:", reply_markup=keyboard)
+        update.message.reply_text(welcome_text, parse_mode='Markdown')
+        update.message.reply_text("Выбери действие:", reply_markup=keyboard)
         
-        print(f"✅ Start command processed for user {user_name} (chat_id: {chat_id})")
+        print(f"✅ Start command processed for user {user_name}")
         
     except Exception as e:
         print("❌ Error in start handler:", e)
-        await update.message.reply_text("Произошла ошибка. Попробуйте позже.")
+        update.message.reply_text("Произошла ошибка. Попробуйте позже.")
 
 # Заглушки для остальных команд
-async def explore_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🏙️ Исследование города... (в разработке)")
+def explore_city(update: Update, context: CallbackContext):
+    update.message.reply_text("🏙️ Исследование города... (в разработке)")
 
-async def go_to_bar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🍻 Идем в бар... (в разработке)")
+def go_to_bar(update: Update, context: CallbackContext):
+    update.message.reply_text("🍻 Идем в бар... (в разработке)")
 
-async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📊 Статус персонажа... (в разработке)")
+def show_status(update: Update, context: CallbackContext):
+    update.message.reply_text("📊 Статус персонажа... (в разработке)")
 
-async def show_inventory(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎒 Инвентарь... (в разработке)")
+def show_inventory(update: Update, context: CallbackContext):
+    update.message.reply_text("🎒 Инвентарь... (в разработке)")
