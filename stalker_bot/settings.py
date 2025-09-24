@@ -31,21 +31,21 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'stalker_bot.urls'
 
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',  # ИСПРАВЛЕНО: template вместо templates
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',           # ИСПРАВЛЕНО
-                'django.template.context_processors.request',         # ИСПРАВЛЕНО  
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
+#TEMPLATES = [
+#    {
+#        'BACKEND': 'django.template.backends.django.DjangoTemplates',  # ИСПРАВЛЕНО: template вместо templates
+#        'DIRS': [],
+#        'APP_DIRS': True,
+#        'OPTIONS': {
+#            'context_processors': [
+#                'django.template.context_processors.debug',           # ИСПРАВЛЕНО
+#                'django.template.context_processors.request',         # ИСПРАВЛЕНО  
+#                'django.contrib.auth.context_processors.auth',
+#                'django.contrib.messages.context_processors.messages',
+#            ],
+#        },
+#    },
+#]
 
 WSGI_APPLICATION = 'stalker_bot.wsgi.application'
 
