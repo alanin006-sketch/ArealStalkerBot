@@ -1,3 +1,4 @@
+from bot.simple_storage import get_player, update_player
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
