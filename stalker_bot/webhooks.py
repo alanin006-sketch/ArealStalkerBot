@@ -6,43 +6,36 @@ import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler
 
-# Кэш для приложения
-_bot_app = None
+# Глобальное приложение
+app = None
 
-def get_bot_application():
-    global _bot_app
-    if _bot_app is None:
+def init_bot():
+    global app
+    if app is None:
         token = os.getenv('TELEGRAM_BOT_TOKEN')
-        if not token:
-            raise ValueError("TELEGRAM_BOT_TOKEN not set")
+        app = Application.builder().token(token).build()
         
-        _bot_app = Application.builder().token(token).build()
-        
-        # Добавляем обработчики
         from bot.handlers import start
-        _bot_app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("start", start))
         
-    return _bot_app
+        # Запускаем приложение
+        app.initialize()
+        print("✅ Bot initialized")
 
 @csrf_exempt
 def webhook(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            print("📨 Received Telegram update")
+            if app is None:
+                init_bot()
             
-            app = get_bot_application()
+            data = json.loads(request.body)
             update = Update.de_json(data, app.bot)
             
-            # Простой синхронный обработчик
-            async def handle_update():
-                await app.initialize()
-                await app.process_update(update)
+            # Используем update_queue для обработки
+            app.update_queue.put_nowait(update)
             
-            # Запускаем обработку
-            asyncio.run(handle_update())
-            
-            print("✅ Update processed")
+            print("✅ Update queued successfully")
             return JsonResponse({'status': 'ok'})
             
         except Exception as e:
