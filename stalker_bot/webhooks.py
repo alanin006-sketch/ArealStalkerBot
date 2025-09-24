@@ -57,18 +57,19 @@ def webhook(request):
                     }
                 )
             
-            elif text == '/status' or text == '📊 Мой статус':
-                status_text = """
+elif text == '/status' or text == '📊 Мой статус':
+    player = get_player(chat_id)
+    status_text = f"""
 *ТВОЙ СТАТУС* 📊
 
-👤 Имя: Новичок
-❤️ Здоровье: 100/100
-💰 Деньги: 100 руб.
-🎒 Инвентарь: Пустой
+👤 Имя: {player['name']}
+❤️ Здоровье: {player['health']}/100
+💰 Деньги: {player['money']} руб.
+🎒 Инвентарь: {len(player['inventory'])} предметов
 
-📍 Локация: Вокзал Хармонта
-⭐ Репутация: Неизвестен
-                """
+📍 Локация: {player['location']}
+⭐ Репутация: {player['reputation']}
+    """
                 requests.post(
                     f"https://api.telegram.org/bot{token}/sendMessage",
                     json={
