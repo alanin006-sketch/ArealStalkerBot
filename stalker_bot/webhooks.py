@@ -2,44 +2,63 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import os
-import asyncio
-from telegram import Update
-from telegram.ext import Application, CommandHandler
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler
+import threading
 
-# Глобальное приложение
-app = None
+# Глобальные переменные
+bot = None
+dispatcher = None
 
-def init_bot():
-    global app
-    if app is None:
+def setup_bot():
+    global bot, dispatcher
+    if bot is None:
         token = os.getenv('TELEGRAM_BOT_TOKEN')
-        app = Application.builder().token(token).build()
+        if not token:
+            print("❌ TELEGRAM_BOT_TOKEN not set!")
+            return False
+            
+        print("✅ Initializing bot...")
+        bot = Bot(token=token)
+        dispatcher = Dispatcher(bot, None, workers=0)
         
+        # Добавляем обработчики
         from bot.handlers import start
-        app.add_handler(CommandHandler("start", start))
+        dispatcher.add_handler(CommandHandler("start", start))
         
-        # Запускаем приложение
-        app.initialize()
-        print("✅ Bot initialized")
+        print("✅ Bot setup completed")
+        return True
+    return True
 
 @csrf_exempt
 def webhook(request):
     if request.method == 'POST':
         try:
-            if app is None:
-                init_bot()
+            if not setup_bot():
+                return JsonResponse({'status': 'error', 'message': 'Bot not configured'})
             
-            data = json.loads(request.body)
-            update = Update.de_json(data, app.bot)
+            # Парсим обновление
+            body = request.body.decode('utf-8')
+            data = json.loads(body)
+            update = Update.de_json(data, bot)
             
-            # Используем update_queue для обработки
-            app.update_queue.put_nowait(update)
+            print("📨 Processing update...")
             
-            print("✅ Update queued successfully")
+            # Обрабатываем обновление в отдельном потоке
+            def process_update():
+                try:
+                    dispatcher.process_update(update)
+                    print("✅ Update processed successfully")
+                except Exception as e:
+                    print(f"❌ Error processing update: {e}")
+            
+            thread = threading.Thread(target=process_update)
+            thread.start()
+            
             return JsonResponse({'status': 'ok'})
             
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Error in webhook: {e}")
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
