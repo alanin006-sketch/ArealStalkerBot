@@ -1,15 +1,13 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
-import os
 import json
+import os
 import asyncio
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 # Импортируем наши обработчики
-from bot.handlers import start, explore_city, go_to_bar, order_beer, ask_about_zone, show_status, show_inventory, cancel
-from bot.states import ARRIVAL, BAR_CHOICE
-from bot.keyboards import get_main_keyboard
+from bot.handlers import start
 
 # Глобальная переменная для приложения
 application = None
@@ -22,32 +20,15 @@ def setup_bot():
             print("❌ TELEGRAM_BOT_TOKEN not set!")
             return None
             
+        print("✅ Initializing bot application...")
         application = Application.builder().token(token).build()
         
-        # Создаем обработчик диалога
-        from bot.states import ARRIVAL, BAR_CHOICE
+        # Добавляем обработчик команды /start
+        application.add_handler(CommandHandler("start", start))
         
-        conv_handler = ConversationHandler(
-            entry_points=[CommandHandler('start', start)],
-            states={
-                ARRIVAL: [
-                    MessageHandler(filters.Regex('👣 Исследовать город'), explore_city),
-                    MessageHandler(filters.Regex('🍻 Найти бар'), go_to_bar),
-                    MessageHandler(filters.Regex('📊 Мой статус'), show_status),
-                    MessageHandler(filters.Regex('🎒 Инвентарь'), show_inventory),
-                ],
-                BAR_CHOICE: [
-                    MessageHandler(filters.Regex('🍺 Заказать пиво'), order_beer),
-                    MessageHandler(filters.Regex('👂 Расспросить о Зоне'), ask_about_zone),
-                    MessageHandler(filters.Regex('⬅️ Выйти из бара'), cancel),
-                ],
-            },
-            fallbacks=[CommandHandler('cancel', cancel)]
-        )
-        
-        application.add_handler(conv_handler)
+        # Инициализируем приложение
         application.initialize()
-        print("✅ Bot application setup completed")
+        print("✅ Bot setup completed")
     
     return application
 
@@ -57,7 +38,7 @@ def webhook(request):
         try:
             # Парсим входящее обновление от Telegram
             data = json.loads(request.body)
-            print("📨 Received update:", data)
+            print("📨 Received Telegram update")
             
             # Настраиваем бота если еще не настроен
             app = setup_bot()
