@@ -57,9 +57,9 @@ def webhook(request):
                     }
                 )
             
-elif text == '/status' or text == '📊 Мой статус':
-    player = get_player(chat_id)
-    status_text = f"""
+            elif text == '/status' or text == '📊 Мой статус':
+                player = get_player(chat_id)
+                status_text = f"""
 *ТВОЙ СТАТУС* 📊
 
 👤 Имя: {player['name']}
