@@ -2,63 +2,76 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import os
-from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler
-import threading
+import asyncio
+from telegram import Update
+from telegram.ext import Application, CommandHandler
 
-# Глобальные переменные
-bot = None
-dispatcher = None
+# Глобальное приложение
+_app = None
 
-def setup_bot():
-    global bot, dispatcher
-    if bot is None:
-        token = os.getenv('TELEGRAM_BOT_TOKEN')
-        if not token:
-            print("❌ TELEGRAM_BOT_TOKEN not set!")
-            return False
-            
-        print("✅ Initializing bot...")
-        bot = Bot(token=token)
-        dispatcher = Dispatcher(bot, None, workers=0)
-        
-        # Добавляем обработчики
-        from bot.handlers import start
-        dispatcher.add_handler(CommandHandler("start", start))
-        
-        print("✅ Bot setup completed")
-        return True
-    return True
+async def create_app():
+    """Создает и настраивает приложение"""
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    if not token:
+        raise ValueError("TELEGRAM_BOT_TOKEN not set")
+    
+    # Создаем приложение
+    application = Application.builder().token(token).build()
+    
+    # Импортируем и добавляем обработчики
+    from bot.handlers import start
+    application.add_handler(CommandHandler("start", start))
+    
+    # Инициализируем
+    await application.initialize()
+    await application.start()
+    
+    return application
+
+def get_app():
+    """Получает или создает приложение"""
+    global _app
+    if _app is None:
+        # Создаем приложение синхронно
+        _app = asyncio.run(create_app())
+    return _app
 
 @csrf_exempt
 def webhook(request):
     if request.method == 'POST':
         try:
-            if not setup_bot():
-                return JsonResponse({'status': 'error', 'message': 'Bot not configured'})
+            # Получаем приложение
+            app = get_app()
             
             # Парсим обновление
-            body = request.body.decode('utf-8')
-            data = json.loads(body)
-            update = Update.de_json(data, bot)
+            data = json.loads(request.body)
+            update = Update.de_json(data, app.bot)
             
             print("📨 Processing update...")
             
-            # Обрабатываем обновление в отдельном потоке
-            def process_update():
-                try:
-                    dispatcher.process_update(update)
-                    print("✅ Update processed successfully")
-                except Exception as e:
-                    print(f"❌ Error processing update: {e}")
+            # Обрабатываем обновление асинхронно
+            async def process():
+                await app.process_update(update)
             
-            thread = threading.Thread(target=process_update)
-            thread.start()
+            # Запускаем в существующем event loop или создаем новый
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
             
+            if loop.is_running():
+                asyncio.create_task(process())
+            else:
+                loop.run_until_complete(process())
+            
+            print("✅ Update queued")
             return JsonResponse({'status': 'ok'})
             
         except Exception as e:
-            print(f"❌ Error in webhook: {e}")
+            print(f"❌ Error: {e}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
