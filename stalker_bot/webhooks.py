@@ -4,66 +4,49 @@ import json
 import os
 import asyncio
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CommandHandler
 
-# Импортируем наши обработчики
-from bot.handlers import start
+# Кэш для приложения
+_bot_app = None
 
-# Глобальная переменная для приложения
-application = None
-
-def setup_bot():
-    global application
-    if application is None:
+def get_bot_application():
+    global _bot_app
+    if _bot_app is None:
         token = os.getenv('TELEGRAM_BOT_TOKEN')
         if not token:
-            print("❌ TELEGRAM_BOT_TOKEN not set!")
-            return None
-            
-        print("✅ Initializing bot application...")
-        application = Application.builder().token(token).build()
+            raise ValueError("TELEGRAM_BOT_TOKEN not set")
         
-        # Добавляем обработчик команды /start
-        application.add_handler(CommandHandler("start", start))
+        _bot_app = Application.builder().token(token).build()
         
-        print("✅ Bot setup completed")
-    
-    return application
+        # Добавляем обработчики
+        from bot.handlers import start
+        _bot_app.add_handler(CommandHandler("start", start))
+        
+    return _bot_app
 
 @csrf_exempt
 def webhook(request):
     if request.method == 'POST':
         try:
-            # Парсим входящее обновление от Telegram
             data = json.loads(request.body)
             print("📨 Received Telegram update")
             
-            # Настраиваем бота если еще не настроен
-            app = setup_bot()
-            if app is None:
-                return JsonResponse({'status': 'error', 'message': 'Bot not configured'})
-            
-            # Создаем объект Update
+            app = get_bot_application()
             update = Update.de_json(data, app.bot)
             
-            # Обрабатываем обновление через run_until_complete
-            async def process_update():
-                async with app:
-                    await app.process_update(update)
+            # Простой синхронный обработчик
+            async def handle_update():
+                await app.initialize()
+                await app.process_update(update)
             
-            # Запускаем асинхронную обработку
-            if app.running:
-                asyncio.create_task(process_update())
-            else:
-                asyncio.run(process_update())
+            # Запускаем обработку
+            asyncio.run(handle_update())
             
-            print("✅ Update processed successfully")
+            print("✅ Update processed")
             return JsonResponse({'status': 'ok'})
             
         except Exception as e:
-            print("❌ Error in webhook:", str(e))
-            import traceback
-            print("Full traceback:", traceback.format_exc())
+            print(f"❌ Error: {e}")
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
