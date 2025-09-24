@@ -13,13 +13,10 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = ['*']  # Для разработки, потом заменить на конкретные домены
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'bot',
+    'bot',  # только наше приложение
 ]
 
 MIDDLEWARE = [
